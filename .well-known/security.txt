@@ -1,0 +1,5 @@
+# Encontrou uma falha de segurança no Voyalis? Avise por e-mail, sem divulgar antes da correção.
+Contact: mailto:asmarinho@protonmail.com
+Expires: 2027-11-01T00:00:00.000Z
+Preferred-Languages: pt, en
+Canonical: https://asmarinho84.github.io/voyalis-web/.well-known/security.txt
