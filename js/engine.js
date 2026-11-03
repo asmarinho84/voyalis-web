@@ -22,12 +22,18 @@ export class Engine {
    *               onde fica a chave quando o visitante não pede para lembrá-la neste aparelho
    */
   constructor(store, opts = {}) {
+    // opts.siteKey: o site usa a chave do próprio intermediário; o visitante não precisa de chave, e a pesquisa fica enxuta
+    // (só as datas escolhidas, sem bilhetes separados nem detalhes automáticos) para render mais consultas.
+    this.siteKey = !!opts.siteKey;
     this.store = store;
     this.session = opts.session || null;
     this.opts = opts;
     this.jobs = new Map();
     this._credits = { t: 0, v: null };
   }
+  /** Usando a chave do site agora? (sim, a menos que o visitante tenha colocado a própria chave) */
+  get usingSiteKey() { return this.siteKey && !this.settings().serpapi_key; }
+  newSearchId() { return Math.random().toString(36).slice(2, 10) + Date.now().toString(36).slice(-4); }
 
   /* ---------- configurações ---------- */
   settings() {
@@ -53,17 +59,23 @@ export class Engine {
     this._credits = { t: 0, v: null };
     return this.settings();
   }
-  serp() {
-    const k = this.settings().serpapi_key;
-    return k ? new SerpApi(k, this.opts) : null;
+  /** Pesquisa enxuta com a chave do site: só as datas escolhidas, sem bilhetes separados e sem detalhes automáticos. */
+  _limits() {
+    const s = this.settings();
+    return this.usingSiteKey ? { max_calls: Math.min(3, s.max_calls), auto_details: false, split: false } : { max_calls: s.max_calls, auto_details: s.auto_details, split: true };
   }
-  _needSerp() {
-    const s = this.serp();
+  serp(searchId = "") {
+    const k = this.settings().serpapi_key;
+    return k || this.siteKey ? new SerpApi(k, { ...this.opts, searchId: k ? "" : searchId || this.newSearchId() }) : null;
+  }
+  _needSerp(searchId = "") {
+    const s = this.serp(searchId);
     if (!s) throw new Error("Configure sua chave da SerpApi em ⚙ Configurações.");
     return s;
   }
   config() {
-    return { configured: !!this.settings().serpapi_key, today: C.todayISO() };
+    const own = !!this.settings().serpapi_key;
+    return { configured: this.siteKey || own, siteKey: this.siteKey, ownKey: own, usingSiteKey: this.siteKey && !own, today: C.todayISO() };
   }
   async testKey(key) {
     if (!KEY_RE.test(String(key || "").trim())) return { valid: false, reason: "formato" };
@@ -71,6 +83,7 @@ export class Engine {
   }
   /** Saldo de buscas (consulta gratuita, cache de 5 min). null se não souber. */
   async credits(force = false) {
+    if (this.usingSiteKey) return null; // o saldo da conta do site não é mostrado ao público
     const serp = this.serp();
     if (!serp) return null;
     if (!force && Date.now() - this._credits.t < 300000) return this._credits.v;
@@ -80,6 +93,17 @@ export class Engine {
     return v;
   }
   _spent() { this._credits = { t: 0, v: null }; }
+
+  /** Pesquisas grátis que ainda restam hoje com a chave do site ({ limit, used, left }); null se não se aplica. Não gasta nada. */
+  async quota() {
+    if (!this.usingSiteKey || !this.opts.apiBase) return null;
+    try {
+      const f = this.opts.fetchFn || ((...a) => globalThis.fetch(...a));
+      const r = await f(`${this.opts.apiBase}quota`, { headers: { "X-Requested-With": "voyalis" }, credentials: "omit", cache: "no-store" });
+      const j = await r.json();
+      return Number.isFinite(j.left) ? { limit: j.limit, used: j.used, left: j.left } : null;
+    } catch { return null; }
+  }
 
   /* ---------- jobs com progresso ---------- */
   _job(kind, req, total) {
@@ -93,8 +117,8 @@ export class Engine {
 
   /* ================= PLANEJAR VIAGEM (pesquisa completa) ================= */
   _tripPlan(req) {
-    const s = this.settings(), planned = C.planQueries(req).length, run = Math.min(planned, s.max_calls);
-    const split = req.return_date ? 2 : 0;
+    const s = this._limits(), planned = C.planQueries(req).length, run = Math.min(planned, s.max_calls);
+    const split = req.return_date && s.split ? 2 : 0;
     const details = s.auto_details ? (req.return_date ? 2 : 1) : 0;
     const km = (req.hotels && req.hotel_km) || (req.tours && req.tour_km) ? 1 : 0;
     return { planned, run, split, details, km, hotels: req.hotels ? 1 : 0, tours: req.tours ? 1 : 0 };
@@ -118,6 +142,7 @@ export class Engine {
     const queries = C.planQueries(req).slice(0, maxCalls);
     const [mainO, mainD] = [C.expand(req.origin, req.nearby)[0], C.expand(req.destination, req.nearby)[0]];
     const offers = [], errors = [];
+    let limit = "";
     let insights = null, insightsAlt = null;
     await pool(queries, 5, async (q) => {
       const [o, d, dep, ret] = q;
@@ -130,10 +155,10 @@ export class Engine {
           if (dep === req.depart_date && ret === req.return_date && o === mainO && d === mainD) insights = r.insights;
           else insightsAlt ??= r.insights;
         }
-      } catch (e) { errors.push(`voos ${o}→${d} ${dep}: ${e.message}`); }
+      } catch (e) { if (e.code === "limite_diario") limit = e.message; else errors.push(`voos ${o}→${d} ${dep}: ${e.message}`); }
       onStep?.(q, n, offers.length ? Math.min(...offers.map((x) => x.price_pp)) : null);
     });
-    return { offers, errors, insights: insights || insightsAlt, queries: queries.length };
+    return { offers, errors, insights: insights || insightsAlt, queries: queries.length, limit };
   }
 
   async _splitTickets(serp, req, bestRt) {
@@ -150,7 +175,8 @@ export class Engine {
     const log = (m) => { job.log.push(m); if (job.log.length > 80) job.log.splice(0, job.log.length - 80); };
     const step = (m) => { job.done = Math.min(job.total - 1, job.done + 1); if (m) log(m); };
     try {
-      const serp = this.serp();
+      const sid = this.newSearchId();
+      const serp = this.serp(sid);
       const dest = C.airportInfo(req.destination) || { code: req.destination, city: req.destination, a2: null, country: "" };
       const orig = C.airportInfo(req.origin) || { code: req.origin, city: req.origin };
       log(`Pesquisando ${orig.city} → ${dest.city}: ${plan.run} combinação(ões) de datas e aeroportos` + (plan.planned > plan.run ? ` (de ${plan.planned} possíveis, limitado para poupar buscas)` : ""));
@@ -162,8 +188,9 @@ export class Engine {
         step(`${o}→${d} ${dep.slice(8)}/${dep.slice(5, 7)}${ret ? ` ⇄ ${ret.slice(8)}/${ret.slice(5, 7)}` : ""}: ${n} voo(s)${best ? ` · menor até agora ${C.money(best)}` : ""}`);
       });
       const errors = [...scan.errors];
+      if (scan.limit && !scan.offers.length) { const e = new Error(scan.limit); e.code = "limite_diario"; throw e; }
       const ex = scan.offers.filter((o) => o.depart_date === req.depart_date && o.return_date === req.return_date).map((o) => o.price_pp);
-      const split = await this._splitTickets(serp, req, ex.length ? Math.min(...ex) : null);
+      const split = plan.split ? await this._splitTickets(serp, req, ex.length ? Math.min(...ex) : null) : { offers: [], errors: [] };
       errors.push(...split.errors);
       if (plan.split) step(`Bilhetes separados: ${split.offers.length} combinação(ões) mais barata(s)`);
       const flights = C.analyzeFlights([...scan.offers, ...split.offers], req);
@@ -173,11 +200,11 @@ export class Engine {
       if (plan.details && flights.length) {
         const best = flights.find((o) => o.kind !== "split" && (o.token || o.booking_token)); // a mais barata que o Google deixa detalhar
         if (best && best.return_date && best.token) {
-          try { Object.assign(best, await this.detailOffer(best, req)); step("Volta da melhor oferta confirmada"); }
+          try { Object.assign(best, await this.detailOffer(best, req, sid)); step("Volta da melhor oferta confirmada"); }
           catch (e) { errors.push(`volta da melhor oferta: ${e.message}`); step(); }
         }
         if (best && best.booking_token) {
-          try { Object.assign(best, await this.sellers(best, req)); step("Vendedores da melhor oferta comparados"); }
+          try { Object.assign(best, await this.sellers(best, req, sid)); step("Vendedores da melhor oferta comparados"); }
           catch (e) { errors.push(`onde comprar: ${e.message}`); step(); }
         }
         flights.sort((a, b) => a.price_pp - b.price_pp);
@@ -239,7 +266,7 @@ export class Engine {
           tours: C.tourLinks(where, req.depart_date, req.return_date),
           safety: C.safetyLink(place), cost: C.costLink(place),
         },
-        errors: [...new Set(errors)].slice(0, 10), stats: { queries: scan.queries, planned: plan.planned }, ts: Date.now(),
+        errors: [...new Set(errors)].slice(0, 10), stats: { queries: scan.queries, planned: plan.planned }, ts: Date.now(), sid,
       };
       this.store.set("trip:last", result);
       this._spent();
@@ -249,6 +276,7 @@ export class Engine {
     } catch (e) {
       job.status = "error";
       job.error = e.message;
+      job.code = e.code || "";
     }
   }
   lastTrip() { return this.store.get("trip:last", null); }
@@ -283,8 +311,8 @@ export class Engine {
   }
 
   /** Volta de uma oferta (1 busca): confirma o preço do ida-e-volta e libera o "onde comprar". */
-  async detailOffer(offer, req) {
-    const serp = this._needSerp();
+  async detailOffer(offer, req, sid = "") {
+    const serp = this._needSerp(sid);
     if (!offer.token || !offer.return_date) throw new Error("Esta oferta não tem detalhe de volta disponível.");
     const opts = await serp.returnLegs(offer.origin, offer.destination, offer.depart_date, offer.return_date, offer.token, req.cabin);
     this._spent();
@@ -296,8 +324,8 @@ export class Engine {
     };
   }
   /** Preço por vendedor (companhia x agências) de uma oferta (1 busca). */
-  async sellers(offer, req) {
-    const serp = this._needSerp();
+  async sellers(offer, req, sid = "") {
+    const serp = this._needSerp(sid);
     if (!offer.booking_token) throw new Error("O Google não liberou as opções de compra desta oferta. Use o link do Google Flights.");
     const r = await serp.bookingOptions(offer.origin, offer.destination, offer.depart_date, offer.return_date, offer.booking_token, req.cabin);
     this._spent();
@@ -306,8 +334,8 @@ export class Engine {
     return { sellers: a.items, seller_notes: a.notes, seller_official: a.official ? a.official.price : null, seller_separate: r.separate, baggage: r.baggage };
   }
   /** Endereço, telefone e rota de um hotel (1 busca). */
-  async hotelDetail(hotel, req, stay) {
-    const serp = this._needSerp();
+  async hotelDetail(hotel, req, stay, sid = "") {
+    const serp = this._needSerp(sid);
     if (!hotel.token) throw new Error("Este hotel não tem detalhe disponível.");
     const d = await serp.hotelDetails(hotel.token, stay.checkin, stay.checkout, req.adults, req.children, req.children_ages || []);
     this._spent();
@@ -341,8 +369,9 @@ export class Engine {
     return job.id;
   }
   async _runScan(job, req) {
+    let limit = "";
     try {
-      const serp = this.serp();
+      const serp = this.serp(this.newSearchId());
       const regions = C.REGIONS.filter((r) => req.regions.includes(r.id));
       const lists = [], errors = [], areas = [];
       await pool(regions, 3, async (r) => {
@@ -352,13 +381,14 @@ export class Engine {
           areas.push({ id: r.id, label: r.label, count: l.length, ok: true });
           job.log.push(`${r.label}: ${l.length} destino(s)`);
         } catch (e) {
+          if (e.code === "limite_diario") limit = e.message;
           errors.push(`${r.label}: ${e.message}`);
           areas.push({ id: r.id, label: r.label, count: 0, ok: false });
           job.log.push(`${r.label}: erro`);
         }
         job.done++;
       });
-      if (!lists.length) throw new Error(errors[0] || "Nenhuma região respondeu");
+      if (!lists.length) { const e = new Error(limit || errors[0] || "Nenhuma região respondeu"); e.code = limit ? "limite_diario" : ""; throw e; }
       const dests = C.locateDestinations(C.mergeDestinations(lists)).sort((a, b) => a.price_pp - b.price_pp);
       const result = { req, dests, errors, areas, total: dests.length, ts: Date.now() };
       this.store.set("scan:" + C.scanKey(req), { ts: result.ts, result });
@@ -369,6 +399,7 @@ export class Engine {
     } catch (e) {
       job.status = "error";
       job.error = e.message;
+      job.code = e.code || "";
     }
   }
 
@@ -446,7 +477,7 @@ export class Engine {
   }
   /** Checa os alertas vencidos. Chamado ao abrir o app e a cada minuto enquanto ele está aberto. */
   async checkDue() {
-    if (!this.config().configured) return;
+    if (!this.config().configured || this.usingSiteKey) return; // alertas só com a chave própria (não gastam as pesquisas do site)
     for (const w of this.watches()) {
       if (!w.active) continue;
       const due = !w.last_checked || (Date.now() - new Date(w.last_checked + "Z").getTime()) / 60000 >= w.interval_min;

@@ -16,7 +16,7 @@ export function tripTabs(r, alerts = 0) {
     ["summary", "Resumo", ""], ["flights", "Voos", r.flights.length],
     ...(hasMatrix(r) ? [["matrix", "Calendário", ""]] : []),
     ["hotels", "Hospedagem", r.hotels.length], ["tours", "Atrações", r.tours.length],
-    ["dest", "Destino", ""], ["alerts", "Alertas", alerts || ""],
+    ["dest", "Destino", ""], ...(r.noAlerts ? [] : [["alerts", "Alertas", alerts || ""]]),
   ];
 }
 
@@ -103,7 +103,7 @@ function summaryHTML(r) {
     best?.seller_official ? "Se a diferença for pequena, prefira comprar direto na companhia: alterações e reembolsos ficam mais simples." : "Compare o preço na companhia aérea antes de comprar numa agência.",
     r.flights.some((o) => o.kind === "split") ? "Bilhetes separados não protegem a conexão: deixe folga entre os voos." : "",
     intl ? `Viagem internacional: confira passaporte, visto, vacinas e seguro viagem exigidos por ${esc(r.dest.country)}.` : "",
-    "Os preços mudam rápido. Se não for comprar agora, crie um alerta na aba Alertas.",
+    r.noAlerts ? "Os preços mudam rápido: se não for comprar agora, pesquise de novo antes de pagar." : "Os preços mudam rápido. Se não for comprar agora, crie um alerta na aba Alertas.",
   ].filter(Boolean);
   return passHTML(r) + `<div class="card facts">${facts.join("")}</div>` +
     `<div class="card sec" style="margin-top:14px"><h3>${icon.ticket} Antes de comprar</h3><ul class="checklist">${tips.map((t) => `<li>${t}</li>`).join("")}</ul></div>` + errBox(r);

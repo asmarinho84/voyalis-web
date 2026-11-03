@@ -2,9 +2,17 @@
 import { BANDS } from "../core/index.js";
 import { esc } from "./kit.js";
 
-const sec = (title, body, open = false) => `<details ${open ? "open" : ""}><summary>${esc(title)}</summary><div class="body">${body}</div></details>`;
+let SKIP = new Set();
+const sec = (title, body, open = false) => SKIP.has(title) ? "" : `<details ${open ? "open" : ""}><summary>${esc(title)}</summary><div class="body">${body}</div></details>`;
 
-export function helpHTML(version) {
+export function helpHTML(version, { siteKey = false } = {}) {
+  // No site com a chave do próprio intermediário, o visitante não lida com chave, saldo nem alertas.
+  SKIP = new Set(siteKey ? ["Buscas e saldo", "Alertas de preço", "Sua chave de pesquisa (grátis)", "Privacidade e segurança"] : []);
+  const extra = siteKey ? sec("Consultas", `<p>O Voyalis faz as consultas de preço por você: é só pesquisar, sem cadastro e sem chave. Cada pessoa tem <b>2 pesquisas grátis por dia</b>, para o serviço continuar gratuito para todos. Pesquisas iguais feitas há pouco aparecem na hora, sem gastar.</p>
+    <p>Quer pesquisar à vontade? Crie a sua chave grátis da SerpApi (250 consultas por mês, sem cartão) e coloque em <b>Configurações → Sua chave da SerpApi</b>. Ela fica só no seu aparelho, aparece como ********** e pode ser trocada ou removida quando quiser.</p>
+    <p>Com as pesquisas grátis do site, a busca usa as datas escolhidas. Com a sua chave, ela também testa datas vizinhas e aeroportos próximos (em <b>Mais opções</b>) e confirma a volta da melhor oferta.</p>`)
+    + sec("Privacidade", `<ul><li>Não há cadastro, login, anúncios nem cookies.</li><li>Suas pesquisas ficam só no seu aparelho; em Configurações você apaga tudo.</li><li>As consultas passam por um intermediário seguro que não guarda o que você pesquisou.</li></ul>`)
+    : "";
   return `<div class="help">
   ${sec("O que o Voyalis faz", `<p>O Voyalis pesquisa preços reais de passagens, hospedagem e atrações e organiza tudo para você decidir a viagem com calma. Há dois jeitos de usar:</p>
     <dl><dt>Planejar viagem</dt><dd>Você já sabe para onde quer ir. Informe origem, destino, datas e pessoas: o app entrega voos, hospedagem, atrações, segurança e custo de vida do destino e uma estimativa do custo total.</dd>
@@ -17,7 +25,7 @@ export function helpHTML(version) {
     <li><b>Hospedagem:</b> hotéis com preço por noite, total da estadia, nota, distância e a comparação de preço entre os sites (Booking, site oficial e outros).</li>
     <li><b>Atrações:</b> pontos turísticos do destino, com nota e localização. Agências e lojas de turismo ficam de fora.</li>
     <li><b>Destino:</b> segurança e custo de vida do país, com links para informações locais.</li>
-    <li><b>Alertas:</b> acompanhe o preço desta rota e seja avisado quando cair.</li></ul>`)}
+    ${siteKey ? "" : "<li><b>Alertas:</b> acompanhe o preço desta rota e seja avisado quando cair.</li>"}</ul>`)}
 
   ${sec("Como ler os preços", `<ul>
     <li>Preços de voo são <b>por pessoa, ida e volta</b>, em reais. O total do grupo é uma estimativa (preço por pessoa × número de pessoas): crianças podem pagar menos.</li>
@@ -62,6 +70,7 @@ export function helpHTML(version) {
     <li>O app não vende passagens nem hospedagem: ele leva você aos sites que vendem.</li>
     <li>Segurança e custo de vida são dados do país, atualizados uma vez por ano pelo Banco Mundial.</li></ul>`)}
 
+  ${extra}
   <p class="muted small" style="margin-top:16px">Voyalis ${esc(version)}. Dados: Google (via SerpApi), Banco Mundial (CC BY 4.0), Natural Earth, OurAirports. Fontes Barlow (SIL OFL).</p>
   </div>`;
 }

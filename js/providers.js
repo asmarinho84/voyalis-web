@@ -3,7 +3,9 @@
 // A chave nunca aparece em mensagens de erro (redact).
 import { diffDays, hotelLinks, tourLinks } from "./core/index.js";
 
-export class ProviderError extends Error {}
+export class ProviderError extends Error {
+  constructor(message, code = "") { super(message); this.code = code; }
+}
 
 /** Remove chaves/tokens de mensagens (nunca mostrar a chave na tela). */
 export const redact = (msg, ...secrets) => {
@@ -51,18 +53,20 @@ export class SerpApi {
    * não aceita chamadas diretas do navegador. A chave vai num cabeçalho, nunca no endereço.
    * Sem `apiBase` (app Android): consulta a SerpApi diretamente.
    */
-  constructor(key, { fetchFn, sleepFn, timeoutMs, apiBase = null } = {}) {
+  constructor(key, { fetchFn, sleepFn, timeoutMs, apiBase = null, searchId = "" } = {}) {
     this.key = key;
     this._fetch = fetchFn || ((...a) => globalThis.fetch(...a));
     this._sleep = sleepFn || sleep;
     this._timeout = timeoutMs ?? 60000;
     this._base = apiBase;
+    this._sid = searchId; // identifica a pesquisa no intermediário (conta as pesquisas grátis do site, não cada consulta)
   }
 
   async _request(path, params) {
     const viaSite = !!this._base;
     const url = viaSite ? `${this._base}serp/${path}?` + new URLSearchParams(params) : `https://serpapi.com/${path}?` + new URLSearchParams({ ...params, api_key: this.key });
-    const init = viaSite ? { headers: { "X-Serp-Key": this.key, "X-Requested-With": "voyalis" }, credentials: "omit", cache: "no-store" } : undefined;
+    // Sem chave do visitante, o intermediário usa a chave do próprio site (guardada em segredo no servidor).
+    const init = viaSite ? { headers: { ...(this.key ? { "X-Serp-Key": this.key } : this._sid ? { "X-Voyalis-Search": this._sid } : {}), "X-Requested-With": "voyalis" }, credentials: "omit", cache: "no-store" } : undefined;
     let r;
     for (let attempt = 0; attempt < 2; attempt++) {
       try {
@@ -71,6 +75,11 @@ export class SerpApi {
         throw new ProviderError("Sem conexão com o serviço de preços. Verifique sua internet e tente de novo.");
       }
       if (r.status !== 429) break;
+      if (viaSite) { // o intermediário já explica o limite (por dia, do mês); não adianta tentar de novo
+        let body = {};
+        try { body = (await r.json()) || {}; } catch { /* sem corpo */ }
+        throw new ProviderError(body.error || "Muitas consultas seguidas. Aguarde um minuto.", body.code || "");
+      }
       await this._sleep(4000); // limite de requisições: espera e tenta mais uma vez
     }
     if (r.status === 429) throw new ProviderError("SerpApi: limite de requisições por hora atingido; aguarde e tente de novo");
@@ -87,7 +96,7 @@ export class SerpApi {
     const { status, data } = await this._request("search.json", params);
     const err = data.error;
     if (err && String(err).includes("returned any results")) return {}; // consulta válida, sem resultados
-    if (status !== 200 || err) throw new ProviderError("SerpApi: " + redact(err || `HTTP ${status}`, this.key));
+    if (status !== 200 || err) throw new ProviderError((this._base ? "" : "SerpApi: ") + redact(err || `HTTP ${status}`, this.key));
     return data;
   }
 

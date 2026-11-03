@@ -24,7 +24,7 @@
     <h2>O que fica só no seu aparelho</h2>
     <ul>
       <li>As pesquisas que você faz, os alertas de preço e as preferências do site.</li>
-      <li data-show="api">A sua chave da SerpApi, se você usar uma. Se desmarcar “Lembrar neste aparelho”, ela some quando o navegador fecha.</li>
+      <li data-show="userkey">A sua chave da SerpApi, se você usar uma. Se desmarcar “Lembrar neste aparelho”, ela some quando o navegador fecha.</li>
     </ul>
     <p>Esses dados ficam no armazenamento local do navegador e não são enviados ao responsável pelo site. Você apaga tudo em Configurações ou limpando os dados do site no navegador.</p>
 
@@ -32,7 +32,7 @@
     <ul>
       <li data-show="gh"><b>Hospedagem (GitHub Pages, GitHub Inc., Estados Unidos):</b> entrega as páginas. Como em qualquer site, o GitHub pode registrar dados técnicos de acesso, como o endereço IP, segundo a política dele.</li>
       <li data-show="nogh"><b>Hospedagem (Cloudflare Inc., Estados Unidos, rede mundial):</b> entrega as páginas. Como em qualquer site, a Cloudflare processa dados técnicos de acesso, como o endereço IP, para entregar o site e barrar ataques.</li>
-      <li data-show="api"><b>Busca de preços (intermediário do Voyalis na Cloudflare, Cloudflare Inc., Estados Unidos, rede mundial):</b> quando você pesquisa com a sua chave, o navegador envia os dados da pesquisa (aeroportos, datas, número de pessoas, cidade) e a chave por conexão protegida (HTTPS). O intermediário só repassa a consulta à <b>SerpApi</b> (Estados Unidos), que consulta o Google, e devolve o resultado. Ele não grava a chave nem as pesquisas. A Cloudflare processa dados técnicos (como o IP) para entregar o serviço e barrar ataques.</li>
+      <li data-show="api"><b>Busca de preços (intermediário do Voyalis na Cloudflare, Cloudflare Inc., Estados Unidos, rede mundial):</b> quando você pesquisa, o navegador envia os dados da pesquisa (aeroportos, datas, número de pessoas, cidade) por conexão protegida (HTTPS)<span data-show="userkey">, junto com a sua chave</span>. O intermediário só repassa a consulta à <b>SerpApi</b> (Estados Unidos), que consulta o Google, e devolve o resultado. Ele não grava as pesquisas nem quem as fez; consultas iguais podem ficar guardadas por algumas horas, sem identificar ninguém, para responder mais rápido. Para dividir as consultas entre todos, ele conta por algumas horas quantas consultas cada endereço IP fez no dia, sem guardar o que foi pesquisado. A Cloudflare processa dados técnicos (como o IP) para entregar o serviço e barrar ataques.</li>
       <li data-show="api"><b>Banco Mundial:</b> fornece os indicadores dos países. Nenhum dado seu é enviado.</li>
       <li data-show="noapi">Neste endereço, a busca de preços está desligada: o site não envia as suas pesquisas para nenhum serviço.</li>
       <li><b>Sites que você abre pelos links</b> (companhias aéreas, agências, hotéis, passeios): a partir daí vale a política de cada um. O Voyalis não envia a eles o endereço da página em que você estava.</li>

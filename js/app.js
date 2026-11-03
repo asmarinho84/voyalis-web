@@ -4,7 +4,7 @@ import * as C from "./core/index.js";
 import { Engine } from "./engine.js";
 import { Store } from "./store.js";
 import { VERSION } from "./version.js";
-import { API_URL, SITE, SUPPORT } from "./config.js";
+import { API_URL, SITE, SITE_KEY, SUPPORT } from "./config.js";
 import { count } from "./analytics.js";
 import { esc, extLink, icon, linkRow, openSheet, plural, toast } from "./ui/kit.js";
 import { openKeyGuide } from "./ui/keyguide.js";
@@ -20,10 +20,11 @@ import { destSheetHTML, newScanState, scanHead, scanPanel, scanTabs } from "./ui
 const NATIVE = !!globalThis.Capacitor?.isNativePlatform?.();
 const API = NATIVE ? null : /^https:\/\/[a-z0-9.-]+(\/[\w.-]*)*$/i.test(API_URL) ? API_URL.replace(/\/*$/, "/") : /\.github\.io$/i.test(location.hostname) ? null : "/api/";
 const PRICES = NATIVE || !!API;
+const SITEKEY = !NATIVE && !!API && SITE_KEY === true; // o visitante pesquisa sem chave (a chave fica no intermediário)
 let sessionStorageSafe = null;
 try { sessionStorageSafe = globalThis.sessionStorage; } catch { /* navegação privada restrita */ }
 const store = new Store();
-const engine = new Engine(store, NATIVE ? {} : { apiBase: API || "/api/", session: new Store(sessionStorageSafe || undefined, "vys:") });
+const engine = new Engine(store, NATIVE ? {} : { apiBase: API || "/api/", siteKey: SITEKEY, session: new Store(sessionStorageSafe || undefined, "vys:") });
 const $ = (s, root = document) => root.querySelector(s);
 const $$ = (s, root = document) => [...root.querySelectorAll(s)];
 
@@ -42,7 +43,7 @@ function init() {
   $("#helpBtn").innerHTML = icon.help;
   $("#keyBtn").innerHTML = icon.key;
   $("#keyBtn").onclick = () => keyGuide();
-  if (!PRICES) { $("#keyBtn").classList.add("hide"); $("#credits").classList.add("hide"); }
+  if (!PRICES || SITEKEY) { $("#keyBtn").classList.add("hide"); $("#credits").classList.add("hide"); }
   ["f1", "f2", "f3", "f4"].forEach((id, i) => { const el = $("#" + id); if (el) el.innerHTML = [icon.tag, icon.map, icon.cart, icon.shield][i]; });
   $("#footHelp").onclick = (e) => { e.preventDefault(); openHelp(); };
   if (SUPPORT.url) $("#support").innerHTML = extLink(SUPPORT.url, esc(SUPPORT.label));
@@ -87,7 +88,7 @@ function init() {
   count("", { once: true }); // página inicial
 
   // alertas de preço: ao abrir e a cada minuto com o app aberto
-  const tick = () => engine.checkDue().then(refreshAlerts).catch(() => {});
+  const tick = () => (SITEKEY ? Promise.resolve() : engine.checkDue()).then(refreshAlerts).catch(() => {});
   setTimeout(tick, 4000);
   setInterval(tick, 60000);
 }
@@ -124,12 +125,16 @@ function showWelcome() {
 }
 
 /* =============== ajuda e configurações =============== */
-function openHelp() { openSheet("Ajuda", helpHTML(VERSION), { wide: true }); }
+function openHelp() { openSheet("Ajuda", helpHTML(VERSION, { siteKey: SITEKEY }), { wide: true }); }
 
 function openSettings() {
   const s = engine.settings();
   const sh = openSheet("Configurações", `
-    <h3 style="margin-top:4px">Chave de pesquisa</h3>
+    ${SITEKEY ? `<h3 style="margin-top:4px">Sua chave da SerpApi (opcional)</h3>
+    <p class="muted small">${engine.config().ownKey
+      ? "Você está usando a sua própria chave: <b>**********</b>. As pesquisas saem da sua conta da SerpApi, sem o limite diário do site."
+      : `Você está usando as pesquisas grátis do site (${state.quota?.limit || 2} por dia). Quer pesquisar à vontade? Crie a sua chave grátis da SerpApi (250 consultas por mês) e coloque aqui.`}</p>
+    <button class="btn line sm" id="cfgOwnKey" type="button">${icon.key} ${engine.config().ownKey ? "Trocar ou remover minha chave" : "Colocar minha chave"}</button>` : `    <h3 style="margin-top:4px">Chave de pesquisa</h3>
     <p class="muted small">${engine.config().configured ? "Sua chave está conectada" + (engine.settings().remember || NATIVE ? " neste aparelho." : " só nesta sessão do navegador.") : "Nenhuma chave conectada: sem ela o Voyalis mostra só os links e o destino, sem preços."}</p>
     <button class="btn line sm" id="cfgKeyBtn" type="button">${icon.key} ${engine.config().configured ? "Trocar ou remover a chave" : "Conectar minha chave grátis"}</button>
     <h3>Pesquisa completa</h3>
@@ -140,20 +145,24 @@ function openSettings() {
     <h3>Alertas de preço</h3>
     <label for="cfgMon">Combinações por checagem de alerta</label>
     <input type="number" id="cfgMon" min="1" max="30" inputmode="numeric">
+`}
     <h3>Geral</h3>
     <label class="chk"><input type="checkbox" id="cfgWelcome"> Mostrar a tela de boas-vindas ao abrir</label>
     <div class="go"><button class="btn" id="cfgSave" type="button">Salvar</button><button class="btn danger sm" id="cfgWipe" type="button">Apagar pesquisas e alertas</button></div>
     <p class="muted tiny" style="margin-top:14px">Voyalis ${esc(VERSION)}</p>`);
   const b = sh.body;
-  $("#cfgKeyBtn", b).onclick = () => { sh.close(); keyGuide(); };
-  $("#cfgMax", b).value = s.max_calls;
-  $("#cfgMon", b).value = s.max_calls_monitor;
-  $("#cfgAuto", b).checked = s.auto_details;
+  if (SITEKEY) $("#cfgOwnKey", b).onclick = () => { sh.close(); keyGuide(); };
+  if (!SITEKEY) {
+    $("#cfgKeyBtn", b).onclick = () => { sh.close(); keyGuide(); };
+    $("#cfgMax", b).value = s.max_calls;
+    $("#cfgMon", b).value = s.max_calls_monitor;
+    $("#cfgAuto", b).checked = s.auto_details;
+  }
   $("#cfgWelcome", b).checked = store.get("welcome", true);
   const err = (m) => toast(m, "error");
   $("#cfgSave", b).onclick = () => {
     try {
-      engine.saveSettings({ max_calls: $("#cfgMax", b).value, max_calls_monitor: $("#cfgMon", b).value, auto_details: $("#cfgAuto", b).checked });
+      if (!SITEKEY) engine.saveSettings({ max_calls: $("#cfgMax", b).value, max_calls_monitor: $("#cfgMon", b).value, auto_details: $("#cfgAuto", b).checked });
       store.set("welcome", $("#cfgWelcome", b).checked);
       sh.close();
       toast("Configurações salvas.");
@@ -172,9 +181,19 @@ function openSettings() {
   };
 }
 
+const LIMIT_REASON = (n = 2) => `Você já fez as ${n} pesquisas grátis de hoje. Para continuar agora, crie a sua chave grátis da SerpApi (250 consultas por mês, sem cartão) e cole aqui. Leva uns 2 minutos.`;
 async function refreshCredits(force = false) {
   if (!PRICES) return;
   const el = $("#credits");
+  if (SITEKEY && engine.config().usingSiteKey) { // pesquisas grátis do site: mostra quantas restam hoje
+    const q = await engine.quota();
+    state.quota = q;
+    el.classList.toggle("hide", !q);
+    if (q) el.textContent = q.left ? plural(q.left, "pesquisa grátis hoje", "pesquisas grátis hoje") : "Grátis de hoje: esgotado";
+    el.title = "Pesquisas grátis por dia neste site. Toque para usar a sua própria chave.";
+    updateEstimate();
+    return;
+  }
   const on = engine.config().configured;
   el.classList.toggle("hide", !on);
   $("#keyBtn").classList.toggle("attn", !on);
@@ -240,14 +259,15 @@ function restoreForm() {
   $("#children").value = f.children || 0;
   $("#ages").value = f.children_ages || "";
   $("#cabin").value = f.cabin || "economy";
-  $("#flex").value = f.flex ?? 1;
-  $("#nearby").checked = f.nearby ?? true;
+  $("#flex").value = f.flex ?? (SITEKEY ? 0 : 1);
+  $("#nearby").checked = f.nearby ?? !SITEKEY;
   $("#area").value = f.hotel_area || "";
   $("#hotelKm").value = f.hotel_km || 0;
   $("#tourKm").value = f.tour_km || 0;
   $("#stops").value = f.stops || 0;
   $("#maxPrice").value = f.max_price || "";
   if (Array.isArray(f.regions)) $$("#regions input").forEach((i) => { i.checked = f.regions.includes(i.value); });
+  else if (SITEKEY) $$("#regions input").forEach((i) => { i.checked = ["br", "any"].includes(i.value); }); // 2 consultas por descoberta
   $("#agesBox").classList.toggle("hide", !(+$("#children").value > 0));
 }
 let estT;
@@ -261,6 +281,12 @@ function onFormChange() {
 }
 function updateEstimate() {
   const h = $("#hint");
+  if (SITEKEY && engine.config().usingSiteKey) {
+    const q = state.quota;
+    h.textContent = (state.mode === "trip" ? "Voos, hospedagem e atrações com preços reais." : "Destinos mais baratos com preços reais.")
+      + (q ? (q.left ? ` Grátis hoje: ${q.left} de ${q.limit} pesquisas.` : " As pesquisas grátis de hoje acabaram: use a sua chave em Configurações.") : "");
+    return;
+  }
   if (!PRICES) { h.textContent = state.mode === "trip" ? "Mostra os links prontos para comparar os preços nos sites." : "A descoberta de destinos ainda não está ligada neste site."; return; }
   if (!engine.config().configured) { h.textContent = state.mode === "trip" ? "Sem chave: mostra links e o destino. Conecte a chave grátis para ver preços." : "Conecte a chave grátis para descobrir destinos."; return; }
   const b = formBody();
@@ -280,11 +306,16 @@ const scanBody = (b) => ({ ...b, stops: b.stops });
 const showErr = (m) => { const e = $("#err"); e.textContent = m; e.style.display = "block"; };
 
 /* =============== pesquisa com progresso =============== */
-function onSubmit(e) {
+async function onSubmit(e) {
   e.preventDefault();
   $("#err").style.display = "none";
   if (state.running) return;
   const b = formBody();
+  if (SITEKEY && engine.config().usingSiteKey && b.origin && (state.mode === "explore" || b.destination)) {
+    const q = await engine.quota();
+    state.quota = q;
+    if (q && q.left <= 0) { updateEstimate(); return keyGuide(LIMIT_REASON(q.limit)); }
+  }
   if (!PRICES && state.mode === "explore") return showErr("A descoberta de destinos precisa do serviço de preços, que ainda não está ligado neste site. Use Planejar viagem.");
   if (!engine.config().configured && state.mode === "explore") return keyGuide("Para descobrir os destinos mais baratos, o Voyalis precisa da sua chave grátis.");
   if (!b.origin) return showErr("Não reconheci a origem. Digite a cidade e escolha uma opção da lista, ou use o código do aeroporto (ex.: GRU).");
@@ -318,7 +349,11 @@ function poll(id) {
   state.running = false;
   $("#go").disabled = false;
   $("#progress").classList.add("hide");
-  if (j.status === "error") { showErr("A pesquisa não terminou: " + j.error); return; }
+  if (j.status === "error") {
+    if (j.code === "limite_diario") { showErr(j.error); refreshCredits(); return keyGuide(LIMIT_REASON(state.quota?.limit)); }
+    showErr("A pesquisa não terminou: " + j.error);
+    return;
+  }
   if (j.kind === "trip") { state.trip.res = j.result; state.trip.ui = newTripState(); }
   else { state.scan.res = j.result; state.scan.ui = newScanState(); }
   showResults();
@@ -349,6 +384,7 @@ function renderTabs() {
   const c = cur();
   if (!c.res) return;
   const unseen = engine.alerts().filter((a) => !a.seen).length;
+  if (state.mode === "trip") c.res.noAlerts = SITEKEY && engine.config().usingSiteKey; // com a chave do site, alertas gastariam as pesquisas de todos
   const T = state.mode === "trip" ? tripTabs(c.res, unseen) : scanTabs(c.res);
   if (!T.some(([k]) => k === c.ui.tab)) c.ui.tab = T[0][0];
   $("#tabs").innerHTML = T.map(([k, l, n]) => `<button class="tab ${c.ui.tab === k ? "on" : ""}" data-t="${k}" type="button" ${c.ui.tab === k ? 'aria-current="page"' : ""}>${l}${n !== "" ? `<em>${n}</em>` : ""}</button>`).join("");
@@ -396,9 +432,9 @@ function bindTrip(p) {
       catch (e) { b.disabled = false; b.textContent = idle; toast(e.message || String(e), "error"); }
     };
   });
-  action("[data-detail]", "detail", "Buscando a volta…", "Ver volta e confirmar preço (1 busca)", async (id) => { const o = find(id); Object.assign(o, await engine.detailOffer(o, r.req)); });
-  action("[data-sellers]", "sellers", "Comparando vendedores…", "Comparar onde comprar (1 busca)", async (id) => { const o = find(id); Object.assign(o, await engine.sellers(o, r.req)); });
-  action("[data-hotel]", "hotel", "Buscando endereço…", "Ver endereço (1 busca)", async (id) => { const h = r.hotels.find((x) => x.id === id); Object.assign(h, await engine.hotelDetail(h, r.req, r.stay)); });
+  action("[data-detail]", "detail", "Buscando a volta…", "Ver volta e confirmar preço (1 busca)", async (id) => { const o = find(id); Object.assign(o, await engine.detailOffer(o, r.req, r.sid)); });
+  action("[data-sellers]", "sellers", "Comparando vendedores…", "Comparar onde comprar (1 busca)", async (id) => { const o = find(id); Object.assign(o, await engine.sellers(o, r.req, r.sid)); });
+  action("[data-hotel]", "hotel", "Buscando endereço…", "Ver endereço (1 busca)", async (id) => { const h = r.hotels.find((x) => x.id === id); Object.assign(h, await engine.hotelDetail(h, r.req, r.stay, r.sid)); });
   $$("[data-buy]", p).forEach((b) => {
     b.onclick = () => {
       const [id, i] = b.dataset.buy.split(":"), rq = find(id)?.sellers?.[+i]?.request;
