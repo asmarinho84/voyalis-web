@@ -7,7 +7,7 @@ export const API_URL = "https://voyalis-api.voyalis-asmarinho84.workers.dev"; //
 export const GOATCOUNTER_CODE = "voyalis"; // código do painel GoatCounter (a parte antes de .goatcounter.com). Vazio: sem contador
 export const CONTACT_EMAIL = "asmarinho@protonmail.com"; // e-mail de contato para privacidade (LGPD) e segurança
 export const OWNER_NAME = ""; // nome do responsável pelo site (aparece em Privacidade e Termos)
-export const SITE_KEY = false; // true: o intermediário guarda a chave da SerpApi do site e o visitante pesquisa sem chave
+export const SITE_KEY = true; // true: o intermediário guarda a chave da SerpApi do site e o visitante pesquisa sem chave
 
 export const SITE = { name: "Voyalis", url: SITE_URL, contact: CONTACT_EMAIL };
 
