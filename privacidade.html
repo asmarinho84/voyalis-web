@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; style-src-elem 'self'; style-src-attr 'unsafe-inline'; img-src 'self' data: https:; font-src 'self'; connect-src 'self' ; manifest-src 'self'; worker-src 'self'; frame-src 'none'; object-src 'none'; base-uri 'none'; form-action 'self' https://www.google.com; upgrade-insecure-requests">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Privacidade | Voyalis</title>
+  <meta name="description" content="Política de privacidade do Voyalis (LGPD): sem cadastro, sem cookies, sem anúncios.">
+  <meta name="theme-color" content="#0b4f6c">
+  <link rel="icon" href="assets/icons/icon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="css/app.css">
+  <script type="module" src="js/legal.js"></script>
+</head>
+<body>
+  <header class="appbar"><div class="in"><a class="brand" href="./"><img src="assets/icons/icon.svg" alt="" width="30" height="30"><span>Voyalis</span></a></div></header>
+  <main class="legalpage">
+    <h1>Política de privacidade</h1>
+    <p class="muted">Última revisão: 3 de novembro de 2026.</p>
+    <p><b>Resumo:</b> o Voyalis não pede cadastro, não usa cookies, não mostra anúncios e não vende dados. O que você digita fica no seu aparelho.</p>
+
+    <h2>Quem é o responsável</h2>
+    <p>O controlador dos dados é <span data-owner></span>. Contato para assuntos de privacidade (LGPD): <span data-contact>o e-mail ainda não foi publicado; enquanto isso, não envie dados pessoais por outros canais</span>.</p>
+
+    <h2>O que fica só no seu aparelho</h2>
+    <ul>
+      <li>As pesquisas que você faz, os alertas de preço e as preferências do site.</li>
+      <li data-show="api">A sua chave da SerpApi, se você usar uma. Se desmarcar “Lembrar neste aparelho”, ela some quando o navegador fecha.</li>
+    </ul>
+    <p>Esses dados ficam no armazenamento local do navegador e não são enviados ao responsável pelo site. Você apaga tudo em Configurações ou limpando os dados do site no navegador.</p>
+
+    <h2>O que sai do seu aparelho, para quem e por quê</h2>
+    <ul>
+      <li data-show="gh"><b>Hospedagem (GitHub Pages, GitHub Inc., Estados Unidos):</b> entrega as páginas. Como em qualquer site, o GitHub pode registrar dados técnicos de acesso, como o endereço IP, segundo a política dele.</li>
+      <li data-show="nogh"><b>Hospedagem (Cloudflare Inc., Estados Unidos, rede mundial):</b> entrega as páginas. Como em qualquer site, a Cloudflare processa dados técnicos de acesso, como o endereço IP, para entregar o site e barrar ataques.</li>
+      <li data-show="api"><b>Busca de preços (intermediário do Voyalis na Cloudflare, Cloudflare Inc., Estados Unidos, rede mundial):</b> quando você pesquisa com a sua chave, o navegador envia os dados da pesquisa (aeroportos, datas, número de pessoas, cidade) e a chave por conexão protegida (HTTPS). O intermediário só repassa a consulta à <b>SerpApi</b> (Estados Unidos), que consulta o Google, e devolve o resultado. Ele não grava a chave nem as pesquisas. A Cloudflare processa dados técnicos (como o IP) para entregar o serviço e barrar ataques.</li>
+      <li data-show="api"><b>Banco Mundial:</b> fornece os indicadores dos países. Nenhum dado seu é enviado.</li>
+      <li data-show="noapi">Neste endereço, a busca de preços está desligada: o site não envia as suas pesquisas para nenhum serviço.</li>
+      <li><b>Sites que você abre pelos links</b> (companhias aéreas, agências, hotéis, passeios): a partir daí vale a política de cada um. O Voyalis não envia a eles o endereço da página em que você estava.</li>
+      <li data-show="gc"><b>Contador de visitas (GoatCounter):</b> conta acessos de forma anônima, sem cookies e, segundo a política do GoatCounter, sem guardar o endereço IP. Registra só números agregados: página ou aba visitada, navegador, sistema, país aproximado, idioma, largura da tela e site de origem. Não registra o que você pesquisou. Os servidores ficam na Finlândia e na Alemanha. O contador não é ativado quando o navegador pede para não ser rastreado (Do Not Track ou Global Privacy Control). Situação: <span data-gc-status></span>.</li>
+      <li data-show="nogc"><b>Contador de visitas:</b> desligado. O site não mede acessos.</li>
+    </ul>
+
+    <h2>Base legal</h2>
+    <p>O tratamento técnico necessário para entregar o site e atender à pesquisa que você pediu, e a contagem anônima de acessos, se apoiam no legítimo interesse (Lei 13.709/2018, art. 7º, IX), limitado ao mínimo necessário e sem perfilar você.</p>
+
+    <h2>Transferência internacional</h2>
+    <p>Os serviços citados ficam fora do Brasil (Estados Unidos e União Europeia). A transferência é feita para cumprir a finalidade descrita acima, com fornecedores que adotam medidas de segurança, conforme o art. 33 da LGPD.</p>
+
+    <h2>Seus direitos</h2>
+    <p>Você pode pedir confirmação de tratamento, acesso, correção, anonimização, bloqueio ou eliminação, portabilidade, informação sobre compartilhamento e revisão, entre os direitos do art. 18 da LGPD, pelo contato acima. Como o Voyalis não mantém cadastro nem banco de dados com informações pessoais, normalmente não há dados seus guardados pelo responsável: os que existem estão no seu aparelho e você pode apagá-los na hora. Você também pode reclamar à Autoridade Nacional de Proteção de Dados (ANPD).</p>
+
+    <h2>Crianças e adolescentes</h2>
+    <p>O Voyalis não é direcionado a menores de 18 anos. Planejamento e compra de viagens devem ser feitos por adultos.</p>
+
+    <h2>Segurança</h2>
+    <p>Conexão protegida (HTTPS), nenhum script de terceiros ao abrir o site, conteúdo externo sempre tratado antes de aparecer na tela, links externos sem repassar a origem e intermediário que aceita só as consultas do próprio site.</p>
+
+    <h2>Mudanças</h2>
+    <p>Esta política pode mudar quando o site mudar; a data acima mostra a versão vigente.</p>
+    <p><a href="./">Voltar para o Voyalis</a></p>
+  </main>
+</body>
+</html>

@@ -1,0 +1,13 @@
+Voyalis
+Copyright (c) 2026 Marinho. Todos os direitos reservados.
+
+Este software e seu código-fonte são de propriedade exclusiva do autor. Não é permitido copiar, modificar,
+distribuir, sublicenciar ou vender este software, no todo ou em parte, sem autorização prévia e por escrito.
+
+Componentes de terceiros mantêm suas próprias licenças:
+- Capacitor (MIT) - https://capacitorjs.com
+- Fontes Barlow e Barlow Condensed (SIL Open Font License 1.1) - www/assets/fonts/OFL.txt
+- Ícone de avião do Lucide (ISC) - https://lucide.dev
+- Natural Earth (domínio público) e world-atlas (ISC)
+- Dados de aeroportos: airportsdata / OurAirports (MIT / domínio público)
+- Indicadores do Banco Mundial (CC BY 4.0) - atribuição exibida no app

@@ -1,0 +1,128 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; style-src-elem 'self'; style-src-attr 'unsafe-inline'; img-src 'self' data: https:; font-src 'self'; connect-src 'self' ; manifest-src 'self'; worker-src 'self'; frame-src 'none'; object-src 'none'; base-uri 'none'; form-action 'self' https://www.google.com; upgrade-insecure-requests">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Voyalis: passagens baratas, hotéis e destinos com preços reais</title>
+  <meta name="description" content="Pesquise uma viagem e receba tudo pronto: voos do mais barato ao mais caro, ofertas escondidas, hotéis, atrações, segurança e custo de vida do destino. Ou descubra no mapa para onde está mais barato voar nas suas datas.">
+  <meta name="theme-color" content="#0b4f6c">
+  <meta name="color-scheme" content="light dark">
+  <meta name="referrer" content="strict-origin-when-cross-origin">
+  <link rel="canonical" href="https://asmarinho84.github.io/voyalis-web/">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="assets/icons/icon.svg" type="image/svg+xml">
+  <link rel="icon" href="assets/icons/icon-192.png" sizes="192x192" type="image/png">
+  <link rel="apple-touch-icon" href="assets/icons/apple-touch-icon.png">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Voyalis">
+  <meta property="og:title" content="Voyalis: a viagem inteira numa pesquisa, com preços reais">
+  <meta property="og:description" content="Voos, ofertas escondidas, hotéis, atrações e o mapa dos destinos mais baratos para as suas datas.">
+  <meta property="og:image" content="https://asmarinho84.github.io/voyalis-web/assets/og.png">
+  <meta property="og:locale" content="pt_BR">
+  <meta name="twitter:card" content="summary_large_image">
+  <link rel="preload" href="assets/fonts/barlow-latin-400-normal.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="assets/fonts/barlow-latin-700-normal.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="css/app.css">
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"WebApplication","name":"Voyalis","url":"https://asmarinho84.github.io/voyalis-web/","applicationCategory":"TravelApplication","operatingSystem":"Web, Android","inLanguage":"pt-BR","offers":{"@type":"Offer","price":"0","priceCurrency":"BRL"},"description":"Pesquisa de passagens, hotéis e destinos com preços reais, ofertas escondidas e mapa dos destinos mais baratos."}</script>
+</head>
+<body>
+  <a class="skip" href="#form">Pular para a pesquisa</a>
+  <header class="appbar">
+    <div class="in">
+      <a class="brand" id="brand" href="./" aria-label="Voyalis, página inicial"></a>
+      <button class="pill alert hide" id="alertPill" type="button"></button>
+      <button class="pill" id="credits" type="button" title="Buscas disponíveis na sua chave"></button>
+      <button class="iconbtn" id="keyBtn" type="button" aria-label="Como conseguir e colocar a chave" title="Chave de pesquisa"></button>
+      <button class="iconbtn" id="helpBtn" type="button" aria-label="Ajuda" title="Ajuda"></button>
+      <button class="iconbtn" id="cfgBtn" type="button" aria-label="Configurações" title="Configurações"></button>
+    </div>
+  </header>
+
+  <main class="wrap layout">
+    <aside class="side">
+      <div class="seg" role="group" aria-label="O que você quer fazer">
+        <button type="button" id="modeTrip" aria-pressed="true"></button>
+        <button type="button" id="modeExplore" aria-pressed="false"></button>
+      </div>
+
+      <form id="form" class="card search" autocomplete="off" novalidate>
+        <p class="lead" id="lead"></p>
+        <div class="grid">
+          <div class="route-in">
+            <div><label for="origin">Saindo de</label><input type="text" id="origin" list="sugO" placeholder="Cidade ou aeroporto" autocapitalize="words" maxlength="80"></div>
+            <button class="swap tripOnly" type="button" id="swap" aria-label="Inverter origem e destino" title="Inverter origem e destino"></button>
+            <div class="tripOnly"><label for="dest">Indo para</label><input type="text" id="dest" list="sugD" placeholder="Cidade ou aeroporto" autocapitalize="words" maxlength="80"></div>
+          </div>
+          <div class="half"><label for="dep">Ida</label><input type="date" id="dep"></div>
+          <div class="half"><label for="ret">Volta</label><input type="date" id="ret"></div>
+          <div class="half"><label for="adults">Adultos</label><input type="number" id="adults" min="1" max="9" inputmode="numeric"></div>
+          <div class="half"><label for="children">Crianças</label><input type="number" id="children" min="0" max="8" inputmode="numeric"></div>
+          <div id="agesBox" class="hide"><label for="ages">Idade das crianças (ex.: 5, 9)</label><input type="text" id="ages" inputmode="numeric" placeholder="8" maxlength="40"></div>
+        </div>
+
+        <details class="more" id="more">
+          <summary>Mais opções</summary>
+          <div class="grid">
+            <div class="c6"><label for="cabin">Classe</label><select id="cabin">
+              <option value="economy">Econômica</option><option value="premium">Econômica premium</option><option value="business">Executiva</option><option value="first">Primeira classe</option></select></div>
+            <div class="c6 tripOnly"><label for="flex">Datas flexíveis</label><select id="flex">
+              <option value="0">Só as datas escolhidas</option><option value="1">1 dia antes e depois</option><option value="2">2 dias antes e depois</option><option value="3">3 dias antes e depois</option></select></div>
+            <div class="c6 exploreOnly"><label for="stops">Paradas</label><select id="stops">
+              <option value="0">Qualquer</option><option value="1">Só voo direto</option><option value="2">Até 1 parada</option><option value="3">Até 2 paradas</option></select></div>
+            <div class="c6 exploreOnly"><label for="maxPrice">Preço máximo por pessoa (R$)</label><input type="number" id="maxPrice" min="0" step="100" placeholder="Sem limite" inputmode="numeric"></div>
+            <div class="tripOnly"><label class="chk"><input type="checkbox" id="nearby"> Incluir aeroportos próximos (ex.: Navegantes e Florianópolis)</label></div>
+            <div class="tripOnly"><label for="area">Bairro ou endereço para hospedagem (opcional)</label><input type="text" id="area" placeholder="Ex.: Copacabana" maxlength="80"></div>
+            <div class="c6 tripOnly"><label for="hotelKm">Hotéis até</label><select id="hotelKm"></select></div>
+            <div class="c6 tripOnly"><label for="tourKm">Atrações até</label><select id="tourKm"></select></div>
+            <div class="exploreOnly"><label>Regiões pesquisadas (cada uma usa 1 busca)</label><div class="chips" id="regions"></div>
+              <div class="chips" style="margin-top:8px"><button class="btn ghost sm" type="button" id="regAll">Marcar todas</button><button class="btn ghost sm" type="button" id="regNone">Desmarcar todas</button></div></div>
+            <div class="exploreOnly"><label class="chk"><input type="checkbox" id="fresh"> Buscar de novo mesmo com resultado recente (gasta buscas)</label></div>
+          </div>
+        </details>
+
+        <div class="go">
+          <button class="btn" id="go" type="submit"></button>
+          <span class="hint" id="hint" aria-live="polite"></span>
+        </div>
+        <div class="err" id="err" role="alert"></div>
+        <datalist id="sugO"></datalist><datalist id="sugD"></datalist>
+      </form>
+
+      <section class="card progress hide" id="progress" aria-live="polite">
+        <div class="top"><b id="pTitle"></b><span class="muted small" id="pCount"></span></div>
+        <div class="bar"><i id="pFill"></i></div>
+        <details><summary class="small muted" style="cursor:pointer">Ver o que está sendo pesquisado</summary><div class="log" id="log"></div></details>
+      </section>
+    </aside>
+
+    <section class="content">
+      <div id="landing" class="landing">
+        <h1>A viagem inteira numa pesquisa, com preços reais.</h1>
+        <p class="sub">Diga de onde sai, para onde vai e quando. O Voyalis compara as datas vizinhas, os aeroportos próximos e os vendedores, e entrega voos, hospedagem, atrações e o custo estimado da viagem. Ainda não sabe o destino? Veja no mapa para onde está mais barato voar.</p>
+        <div class="feats">
+          <div class="feat"><span class="ic" id="f1"></span><b>Ofertas escondidas</b><p>Testa um a três dias antes e depois e mostra quanto você economiza mudando a data.</p></div>
+          <div class="feat"><span class="ic" id="f2"></span><b>Mapa de preços</b><p>Brasil por estado e cidade, mundo por país: azul até R$ 1.000, amarelo até R$ 2.000, vermelho acima.</p></div>
+          <div class="feat"><span class="ic" id="f3"></span><b>Onde comprar com segurança</b><p>Compara o preço da companhia com o das agências e avisa quando algo parece bom demais.</p></div>
+          <div class="feat"><span class="ic" id="f4"></span><b>Conheça o destino</b><p>Hotéis com comparação entre sites, atrações, segurança e custo de vida antes de decidir.</p></div>
+        </div>
+      </div>
+      <section class="results hide" id="results">
+        <div id="head"></div>
+        <nav class="tabs" id="tabs" aria-label="Resultados"></nav>
+        <div id="panel"></div>
+      </section>
+    </section>
+
+    <footer class="legal">
+      <nav class="footnav"><a href="termos.html">Termos de uso</a><a href="privacidade.html">Privacidade</a><a href="#" id="footHelp">Ajuda</a><span id="support"></span></nav>
+      <p>Preços do Google Flights, Google Hotéis e Google Maps (via SerpApi), consultados na hora da pesquisa. Eles mudam rápido: confirme no site antes de comprar. O Voyalis não vende passagens nem hospedagem. Alguns links podem gerar comissão para o Voyalis, sem custo extra para você.
+      Indicadores de país: Banco Mundial (CC BY 4.0). Mapas: Natural Earth. Aeroportos: OurAirports. <span id="version"></span></p>
+    </footer>
+  </main>
+
+  <div id="layer"></div>
+  <noscript><div class="wrap"><div class="card sec">O Voyalis precisa de JavaScript ativado para pesquisar preços.</div></div></noscript>
+  <script type="module" src="js/app.js"></script>
+</body>
+</html>
